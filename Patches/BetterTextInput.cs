@@ -34,6 +34,8 @@ namespace Marioalexsan.GrindeaQoL.Patches
             }
         }
         private int _cursor = 0;
+
+        public string LastKnownString { get; set; } = "";
     }
 
     [HarmonyPatch]
@@ -61,6 +63,9 @@ namespace Marioalexsan.GrindeaQoL.Patches
 
             else if (e.KeyCode == Keys.Right)
                 data.Cursor++;
+
+            // Update last known string by us
+            data.LastKnownString = input.sInput;
         }
 
         [HarmonyPatch(typeof(TextInput), nameof(TextInput.FetchInput))]
@@ -101,6 +106,9 @@ namespace Marioalexsan.GrindeaQoL.Patches
                 {
                     data.Cursor--;
                     __instance.sInput = __instance.sInput.Remove(data.Cursor, 1);
+
+                    // Update last known string by us
+                    data.LastKnownString = __instance.sInput;
                 }
             }
             else if (e.Character == '\r')
@@ -113,6 +121,9 @@ namespace Marioalexsan.GrindeaQoL.Patches
                 {
                     __instance.sInput = __instance.sInput.Insert(data.Cursor, e.Character.ToString());
                     data.Cursor++;
+
+                    // Update last known string by us
+                    data.LastKnownString = __instance.sInput;
                 }
             }
 
@@ -120,11 +131,26 @@ namespace Marioalexsan.GrindeaQoL.Patches
             return false;
         }
 
+        static void CheckForExternalChanges(TextInput __instance)
+        {
+            var data = GetDataAndSetupIfNeeded(__instance);
+
+            if (data.LastKnownString != __instance.sInput)
+            {
+                // Most likely the string has been externally changed (replaced or appended to with Ctrl-C / V)
+                // A good idea is to set the cursor to its max position
+                data.Cursor = __instance.sInput.Length;
+                data.LastKnownString = __instance.sInput;
+            }
+        }
+
         [HarmonyPatch(typeof(TextInput), nameof(TextInput.RenderMarker), typeof(SpriteBatch), typeof(Vector2), typeof(SpriteFont))]
         [HarmonyPrefix]
         static bool RenderMarker(TextInput __instance, SpriteBatch spriteBatch, Vector2 v2PosOfTextinput, SpriteFont font)
         {
             var data = GetDataAndSetupIfNeeded(__instance);
+
+            CheckForExternalChanges(__instance);
 
             v2PosOfTextinput.X += font.MeasureString(__instance.sInput.Substring(0, data.Cursor)).X;
             v2PosOfTextinput.Y += font.MeasureString("I").Y * 0.1f;
@@ -138,6 +164,8 @@ namespace Marioalexsan.GrindeaQoL.Patches
         static bool RenderMarker(TextInput __instance, SpriteBatch spriteBatch, Vector2 v2PosOfTextinput, SpriteFont font, Color col, uint iMarkerInterval)
         {
             var data = GetDataAndSetupIfNeeded(__instance);
+            
+            CheckForExternalChanges(__instance);
 
             if (__instance.iExistFrames % (iMarkerInterval * 2) <= iMarkerInterval)
             {
