@@ -36,6 +36,7 @@ namespace Marioalexsan.GrindeaQoL
                 (BetterLootChance.Init, null),
                 (BerserkerStyleQoL.Init, BerserkerStyleQoL.CleanupMethod),
                 (SummonPlantQoL.Init, SummonPlantQoL.CleanupMethod),
+                (BetterBuffs.Init, BetterBuffs.CleanupMethod),
             };
         }
 
